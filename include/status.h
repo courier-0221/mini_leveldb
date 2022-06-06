@@ -38,7 +38,7 @@ public:
     }
     
     // 错误类型判定
-    bool ok() const { return (state_ == nullptr); }
+    bool IsOk() const { return (state_ == nullptr); }
     bool IsNotFound() const { return code() == kNotFound; }
     bool IsCorruption() const { return code() == kCorruption; }
     bool IsIOError() const { return code() == kIOError; }
@@ -65,8 +65,9 @@ private:
         return (state_ == nullptr) ? kOk : static_cast<Code>(state_[4]);
     }
 
-    // 构造 state_ 内容
+    // 构造函数
     Status(Code code, const Slice& msg, const Slice& msg2);
+    //拷贝一份 state_
     static const char* CopyState(const char* s);
 
     // 成功状态OK state_ 是 NULL，否则 state_ 是一个包含如下信息的数组
@@ -82,8 +83,6 @@ inline Status::Status(const Status& rhs)
 }
 inline Status& Status::operator=(const Status& rhs)
 {
-    // The following condition catches both aliasing (when this == &rhs),
-    // and the common case where both rhs and *this are ok.
     if (state_ != rhs.state_)
     {
         delete[] state_;
