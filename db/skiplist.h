@@ -123,9 +123,9 @@ struct SkipList<Key, Comparator>::Node
     }
 
 private:
-	// 横向：存储下一个节点位置
-	// 纵向：NewNode 分配内存时会申请从 kMaxHeight 到当前 height 的差值个 Node* 内存，用于存储纵向内容
-    std::atomic<Node*> next_[1];    
+	// 作为Node的最后一个成员变量,由于Node通过placement new的方式构造，因此next_实际上是一个不定长的数组
+	// 数组长度即该节点的高度,next_记录了该节点在所有层的后继节点，0是最底层链表
+    std::atomic<Node*> next_[1];
 };
 
 template <typename Key, class Comparator>
@@ -332,10 +332,11 @@ void SkipList<Key, Comparator>::Insert(const Key& key)
     // 不允许插入重复key
     assert(x == nullptr || !Equal(key, x->key));
 
-    int height = RandomHeight();    // 随机取一个level值
-    if (height > GetMaxHeight())
+    int height = RandomHeight();
+	// 如果随机的level > 最大高度，需要对部分height的前一个节点进行填充,随机的level <= 最大高度无需处理
+    if (height > GetMaxHeight())	
     {
-        // [maxheight, height]
+        // [maxheight, height] 新增加的层 prev 赋值为head_
         for (int i = GetMaxHeight(); i < height; i++)
         {
             prev[i] = head_;
