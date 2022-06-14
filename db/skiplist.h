@@ -93,7 +93,7 @@ struct SkipList<Key, Comparator>::Node
     // 当前节点的Key值
     Key const key;
 
-	// 参数n代表level，可以横向获取下一个节点也可以纵向获取下一个节点，纵向获取时传不同的n来获取
+	// 横向获取每一层节点指向的下一个节点，通过n来切换不同层，n代表level
     Node* Next(int n)
     {
         assert(n >= 0);
@@ -326,14 +326,15 @@ template <typename Key, class Comparator>
 void SkipList<Key, Comparator>::Insert(const Key& key)
 {
     // 待做(opt): 由于插入要求外部加锁，因此可以使用 NoBarrier_Next 的 FindGreaterOrEqual 以提高性能
-    Node* prev[kMaxHeight]; // 长度设定简单粗暴，直接取最大值
+    // 1.记录从最高层查找到第0层经过的节点，目的是插入新节点时依据这些节点进行串联链表
+    Node* prev[kMaxHeight];
     Node* x = FindGreaterOrEqual(key, prev);
 
-    // 不允许插入重复key
+    // 2.不允许插入重复key
     assert(x == nullptr || !Equal(key, x->key));
 
+    // 3.随机高度，如果随机height > 跳表当前最大高度max_height_，需要对 (height-max_height_)层进行初始化,随机的level <= 最大高度无需处理
     int height = RandomHeight();
-	// 如果随机的level > 最大高度，需要对部分height的前一个节点进行填充,随机的level <= 最大高度无需处理
     if (height > GetMaxHeight())	
     {
         // [maxheight, height] 新增加的层 prev 赋值为head_
@@ -347,6 +348,7 @@ void SkipList<Key, Comparator>::Insert(const Key& key)
         max_height_.store(height, std::memory_order_relaxed);
     }
 
+    // 4.创建新节点，然后对每一层的链表进行调整
     x = NewNode(key, height);
     for (int i = 0; i < height; i++)
     {
