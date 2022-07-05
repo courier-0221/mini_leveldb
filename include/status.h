@@ -38,7 +38,7 @@ public:
     }
     
     // 错误类型判定
-    bool IsOk() const { return (state_ == nullptr); }
+    bool ok() const { return (state_ == nullptr); }
     bool IsNotFound() const { return code() == kNotFound; }
     bool IsCorruption() const { return code() == kCorruption; }
     bool IsIOError() const { return code() == kIOError; }
