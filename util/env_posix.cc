@@ -24,12 +24,12 @@
 #include <type_traits>
 #include <utility>
 
+#include "mutex.h"
 #include "env.h"
 #include "slice.h"
 #include "status.h"
-#include "port/port.h"
-#include "util/env_posix_test_helper.h"
-#include "util/posix_logger.h"
+#include "env_posix_test_helper.h"
+#include "posix_logger.h"
 
 namespace leveldb {
 
@@ -493,21 +493,21 @@ class PosixFileLock : public FileLock {
 // Instances are thread-safe because all member data is guarded by a mutex.
 class PosixLockTable {
  public:
-  bool Insert(const std::string& fname) LOCKS_EXCLUDED(mu_) {
+  bool Insert(const std::string& fname) {
     mu_.Lock();
     bool succeeded = locked_files_.insert(fname).second;
     mu_.Unlock();
     return succeeded;
   }
-  void Remove(const std::string& fname) LOCKS_EXCLUDED(mu_) {
+  void Remove(const std::string& fname) {
     mu_.Lock();
     locked_files_.erase(fname);
     mu_.Unlock();
   }
 
  private:
-  port::Mutex mu_;
-  std::set<std::string> locked_files_ GUARDED_BY(mu_);
+  Mutex mu_;
+  std::set<std::string> locked_files_;
 };
 
 class PosixEnv : public Env {
@@ -760,12 +760,11 @@ class PosixEnv : public Env {
     void* const arg;
   };
 
-  port::Mutex background_work_mutex_;
-  port::CondVar background_work_cv_ GUARDED_BY(background_work_mutex_);
-  bool started_background_thread_ GUARDED_BY(background_work_mutex_);
+  Mutex background_work_mutex_;
+  CondVar background_work_cv_;
+  bool started_background_thread_;
 
-  std::queue<BackgroundWorkItem> background_work_queue_
-      GUARDED_BY(background_work_mutex_);
+  std::queue<BackgroundWorkItem> background_work_queue_;
 
   PosixLockTable locks_;  // Thread-safe.
   Limiter mmap_limiter_;  // Thread-safe.
