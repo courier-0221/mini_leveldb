@@ -38,7 +38,8 @@ class PosixLogger final : public Logger {
       thread_id.resize(kMaxThreadIdSize);
     }
 
-    // 首先尝试打印到堆栈分配的缓冲区。如果尝试失败使用动态分配的缓冲区进行第二次尝试。
+    // 如果第一次分的栈内存不够，会第二次分配更大的堆内存。
+    // 如果第二次分的内存还不够，只能对存放内容做截断处理了。
     constexpr const int kStackBufferSize = 512;
     char stack_buffer[kStackBufferSize];
     static_assert(sizeof(stack_buffer) == static_cast<size_t>(kStackBufferSize),
@@ -50,7 +51,7 @@ class PosixLogger final : public Logger {
           (iteration == 0) ? kStackBufferSize : dynamic_buffer_size;
       char* const buffer =
           (iteration == 0) ? stack_buffer : new char[dynamic_buffer_size];
-
+      
       // 将标头打印到缓冲区中 时间+线程id。
       int buffer_offset = std::snprintf(
           buffer, buffer_size, "%04d/%02d/%02d-%02d:%02d:%02d.%06d %s ",
@@ -59,15 +60,13 @@ class PosixLogger final : public Logger {
           now_components.tm_sec, static_cast<int>(now_timeval.tv_usec),
           thread_id.c_str());
 
-      // The header can be at most 28 characters (10 date + 15 time +
-      // 3 delimiters) plus the thread ID, which should fit comfortably into the
-      // static buffer.
+      // 表头最多可以有 28 个字符（10 日期 + 15 时间 + 3 个分隔符）加上线程 ID
       assert(buffer_offset <= 28 + kMaxThreadIdSize);
       static_assert(28 + kMaxThreadIdSize < kStackBufferSize,
                     "stack-allocated buffer may not fit the message header");
       assert(buffer_offset < buffer_size);
 
-      // Print the message into the buffer.
+      // Print the message into the buffer. 
       std::va_list arguments_copy;
       va_copy(arguments_copy, arguments);
       buffer_offset +=
@@ -75,21 +74,17 @@ class PosixLogger final : public Logger {
                          format, arguments_copy);
       va_end(arguments_copy);
 
-      // The code below may append a newline at the end of the buffer, which
-      // requires an extra character.
+      // 需要在缓冲区的末尾附加一个换行符，所以需要一个额外字符的空间。
       if (buffer_offset >= buffer_size - 1) {
-        // The message did not fit into the buffer.
+        // 第一次操作不加入换行符，需要申请内存来处理
         if (iteration == 0) {
-          // Re-run the loop and use a dynamically-allocated buffer. The buffer
-          // will be large enough for the log message, an extra newline and a
-          // null terminator.
+          // 重新运行循环并使用动态分配的缓冲区。缓冲区将足够大以容纳日志消息、额外的换行符和空终止符。
           dynamic_buffer_size = buffer_offset + 2;
           continue;
         }
 
-        // The dynamically-allocated buffer was incorrectly sized. This should
-        // not happen, assuming a correct implementation of std::(v)snprintf.
-        // Fail in tests, recover by truncating the log message in production.
+        // 动态分配的缓冲区大小不正确。 假设 std::(v)snprintf 的正确实现，这不应该发生。
+        // 测试失败，通过截断生产中的日志消息来恢复。
         assert(false);
         buffer_offset = buffer_size - 1;
       }

@@ -24,3 +24,4 @@ $(TARGET) : $(OBJS)
 
 clean:
 	-rm -f $(SRC)*.o $(TARGET)
+	-rm -f LoggerTest.txt

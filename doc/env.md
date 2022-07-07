@@ -31,5 +31,22 @@ class PosixLogger final : public Logger {
 };
 ```
 
+核心接口Logv:
 
+```cpp
+void Logv(const char* format, std::va_list arguments) override {
+	// 记录时间
+    // 记录线程id
+    // 然后将时间和线程id (logheader) 添加到buffer中等待写入LOG文件
+
+    // 日志记录会尝试两次内存分配：第一次分配固定大小的栈内存,如果不够，第二次分配更大的堆内存
+    for (int iteration = 0; iteration < 2; ++iteration) {
+    	// 第一次从栈上申请512字节大小的空间用于存放用户需要记录的内容，这512也包括logheader，
+        // 如果栈空间不足才会触发第二次堆空间的内存分配
+    	// 如果第二次分的内存还不够，只能对存放内容做截断处理了。
+    }
+}
+```
+
+简单来说逻辑就是，如果用户需要记录的内容<512字节，从栈空间上申请空间操作；如果>512字节从堆空间上申请全部内存来记录全部的内容，第一次写入栈空间的512字节不再需要。
 

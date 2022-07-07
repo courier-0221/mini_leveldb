@@ -45,7 +45,10 @@ int main(void) {
   Log(file, "%s\n", "I'm burning like a fire gone wild on Saturday");
   Log(file, "%s\n", "Guess I won't be coming to church on Sunday");
   Log(file, "%s\n", "I'll be waiting for love, waiting for love");
-  
+#if 0
+  std::string str(1500, 'a');
+  Log(file, "%s\n", str.c_str());
+#endif
   delete file;
 
   return 0;
