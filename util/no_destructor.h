@@ -1,7 +1,3 @@
-// Copyright (c) 2018 The LevelDB Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file. See the AUTHORS file for names of contributors.
-
 #ifndef STORAGE_LEVELDB_UTIL_NO_DESTRUCTOR_H_
 #define STORAGE_LEVELDB_UTIL_NO_DESTRUCTOR_H_
 
@@ -10,9 +6,7 @@
 
 namespace leveldb {
 
-// Wraps an instance whose destructor is never called.
-//
-// This is intended for use with function-level static variables.
+// 包装一个从不调用析构函数的实例。适用于函数级静态变量。
 template <typename InstanceType>
 class NoDestructor {
  public:
