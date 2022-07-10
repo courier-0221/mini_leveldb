@@ -61,18 +61,13 @@ Status PosixError(const std::string& context, int error_number) {
   }
 }
 
-// Helper class to limit resource usage to avoid exhaustion.
-// Currently used to limit read-only file descriptors and mmap file usage
-// so that we do not run out of file descriptors or virtual memory, or run into
-// kernel performance problems for very large databases.
+// 帮助类来限制资源使用以避免耗尽。
+// 当前用于限制只读文件描述符和 mmap 文件的使用，这样我们就不会耗尽文件描述符或虚拟内存，或者遇到非常大的数据库的内核性能问题。
 class Limiter {
  public:
-  // Limit maximum number of resources to |max_acquires|.
+  // 将最大资源数限制为 |max_acquires|。
   Limiter(int max_acquires)
-      :
-#if !defined(NDEBUG)
-        max_acquires_(max_acquires),
-#endif  // !defined(NDEBUG)
+      : max_acquires_(max_acquires),
         acquires_allowed_(max_acquires) {
     assert(max_acquires >= 0);
   }
@@ -80,14 +75,15 @@ class Limiter {
   Limiter(const Limiter&) = delete;
   Limiter operator=(const Limiter&) = delete;
 
-  // If another resource is available, acquire it and return true.
-  // Else return false.
+  // 如果另一个资源可用，获取它并返回 true。否则返回假。
   bool Acquire() {
+    // --
     int old_acquires_allowed =
         acquires_allowed_.fetch_sub(1, std::memory_order_relaxed);
 
     if (old_acquires_allowed > 0) return true;
 
+    // ++
     int pre_increment_acquires_allowed =
         acquires_allowed_.fetch_add(1, std::memory_order_relaxed);
 
@@ -99,9 +95,9 @@ class Limiter {
     return false;
   }
 
-  // Release a resource acquired by a previous call to Acquire() that returned
-  // true.
+  // 释放由先前调用 Acquire() 获取的资源，返回 true。
   void Release() {
+    // ++
     int old_acquires_allowed =
         acquires_allowed_.fetch_add(1, std::memory_order_relaxed);
 
@@ -112,22 +108,14 @@ class Limiter {
   }
 
  private:
-#if !defined(NDEBUG)
-  // Catches an excessive number of Release() calls.
+  // 捕获过多的 Release() 调用。
   const int max_acquires_;
-#endif  // !defined(NDEBUG)
-
-  // The number of available resources.
-  //
-  // This is a counter and is not tied to the invariants of any other class, so
-  // it can be operated on safely using std::memory_order_relaxed.
+  // 可用资源的数量。
   std::atomic<int> acquires_allowed_;
 };
 
-// Implements sequential read access in a file using read().
-//
-// Instances of this class are thread-friendly but not thread-safe, as required
-// by the SequentialFile API.
+// 使用 read() 在文件中实现顺序读取访问。
+// 根据 SequentialFile API 的要求，此类的实例是线程友好的，但不是线程安全的。
 class PosixSequentialFile final : public SequentialFile {
  public:
   PosixSequentialFile(std::string filename, int fd)
@@ -163,11 +151,8 @@ class PosixSequentialFile final : public SequentialFile {
   const std::string filename_;
 };
 
-// Implements random read access in a file using pread().
-//
-// Instances of this class are thread-safe, as required by the RandomAccessFile
-// API. Instances are immutable and Read() only calls thread-safe library
-// functions.
+// 使用 pread() 在文件中实现随机读取访问。
+// 根据 RandomAccessFile API 的要求，此类的实例是线程安全的。 实例是不可变的，Read() 只调用线程安全的库函数。
 class PosixRandomAccessFile final : public RandomAccessFile {
  public:
   // The new instance takes ownership of |fd|. |fd_limiter| must outlive this
@@ -219,26 +204,17 @@ class PosixRandomAccessFile final : public RandomAccessFile {
   }
 
  private:
-  const bool has_permanent_fd_;  // If false, the file is opened on every read.
+  const bool has_permanent_fd_;  // 如果为 false，则在每次读取时打开文件。
   const int fd_;                 // -1 if has_permanent_fd_ is false.
   Limiter* const fd_limiter_;
   const std::string filename_;
 };
 
-// Implements random read access in a file using mmap().
-//
-// Instances of this class are thread-safe, as required by the RandomAccessFile
-// API. Instances are immutable and Read() only calls thread-safe library
-// functions.
+// 使用 mmap() 在文件中实现随机读取访问。
+// 根据 RandomAccessFile API 的要求，此类的实例是线程安全的。 实例是不可变的，Read() 只调用线程安全的库函数。
 class PosixMmapReadableFile final : public RandomAccessFile {
  public:
-  // mmap_base[0, length-1] points to the memory-mapped contents of the file. It
-  // must be the result of a successful call to mmap(). This instances takes
-  // over the ownership of the region.
-  //
-  // |mmap_limiter| must outlive this instance. The caller must have already
-  // acquired the right to use one mmap region, which will be released when this
-  // instance is destroyed.
+  // mmap_base[0, length-1] 指向文件的内存映射内容。 它必须是成功调用 mmap() 的结果。 此实例接管该区域的所有权。
   PosixMmapReadableFile(std::string filename, char* mmap_base, size_t length,
                         Limiter* mmap_limiter)
       : mmap_base_(mmap_base),
@@ -467,6 +443,7 @@ int LockOrUnlock(int fd, bool lock) {
   file_lock_info.l_whence = SEEK_SET;
   file_lock_info.l_start = 0;
   file_lock_info.l_len = 0;  // Lock/unlock entire file.
+  // 调用了 posix 函数 fcntl 来完成对文件的加锁和解锁。
   return ::fcntl(fd, F_SETLK, &file_lock_info);
 }
 
@@ -484,13 +461,7 @@ class PosixFileLock : public FileLock {
   const std::string filename_;
 };
 
-// Tracks the files locked by PosixEnv::LockFile().
-//
-// We maintain a separate set instead of relying on fcntl(F_SETLK) because
-// fcntl(F_SETLK) does not provide any protection against multiple uses from the
-// same process.
-//
-// Instances are thread-safe because all member data is guarded by a mutex.
+// 记录被 PosixEnv::LockFile() 方法锁定的文件。
 class PosixLockTable {
  public:
   bool Insert(const std::string& fname) {
@@ -746,12 +717,7 @@ class PosixEnv : public Env {
     env->BackgroundThreadMain();
   }
 
-  // Stores the work item data in a Schedule() call.
-  //
-  // Instances are constructed on the thread calling Schedule() and used on the
-  // background thread.
-  //
-  // This structure is thread-safe because it is immutable.
+  // 在 Schedule() 调用中存储工作项数据。
   struct BackgroundWorkItem {
     explicit BackgroundWorkItem(void (*function)(void* arg), void* arg)
         : function(function), arg(arg) {}

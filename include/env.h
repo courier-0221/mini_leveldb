@@ -197,23 +197,13 @@ class SequentialFile {
 
   virtual ~SequentialFile();
 
-  // Read up to "n" bytes from the file.  "scratch[0..n-1]" may be
-  // written by this routine.  Sets "*result" to the data that was
-  // read (including if fewer than "n" bytes were successfully read).
-  // May set "*result" to point at data in "scratch[0..n-1]", so
-  // "scratch[0..n-1]" must be live when "*result" is used.
-  // If an error was encountered, returns a non-OK status.
-  //
-  // REQUIRES: External synchronization
+  // 从文件中读取n个字节存放到 "scratch[0..n-1]"， 然后将"scratch[0..n-1]"转化为Slice类型并存放到*result中
+  // 如果正确读取，则返回OK status，否则返回non-OK status
   virtual Status Read(size_t n, Slice* result, char* scratch) = 0;
 
-  // Skip "n" bytes from the file. This is guaranteed to be no
-  // slower that reading the same data, but may be faster.
-  //
-  // If end of file is reached, skipping will stop at the end of the
-  // file, and Skip will return OK.
-  //
-  // REQUIRES: External synchronization
+  // 跳过n字节的内容，这并不比读取n字节的内容慢，而且会更快。
+  // 如果到达了文件尾部，则会停留在文件尾部，并返回OK Status。
+  // 否则，返回错误信息
   virtual Status Skip(uint64_t n) = 0;
 };
 
@@ -227,15 +217,8 @@ class RandomAccessFile {
 
   virtual ~RandomAccessFile();
 
-  // Read up to "n" bytes from the file starting at "offset".
-  // "scratch[0..n-1]" may be written by this routine.  Sets "*result"
-  // to the data that was read (including if fewer than "n" bytes were
-  // successfully read).  May set "*result" to point at data in
-  // "scratch[0..n-1]", so "scratch[0..n-1]" must be live when
-  // "*result" is used.  If an error was encountered, returns a non-OK
-  // status.
-  //
-  // Safe for concurrent use by multiple threads.
+  // 这里与顺序读的同名函数相比，多了一个参数offset，offset用来指定
+  // 读取位置距离文件起始位置的偏移量，这样就可以实现随机读了
   virtual Status Read(uint64_t offset, size_t n, Slice* result,
                       char* scratch) const = 0;
 };
