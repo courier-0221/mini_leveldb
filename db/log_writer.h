@@ -15,14 +15,12 @@ namespace log {
 
 class Writer {
  public:
-  // Create a writer that will append data to "*dest".
-  // "*dest" must be initially empty.
-  // "*dest" must remain live while this Writer is in use.
+  // 创建一个 writer 用于追加数据到 dest 指向的文件.
+  // dest 指向的文件初始必须为空文件; dest 生命期不能短于 writer.
   explicit Writer(WritableFile* dest);
 
-  // 创建一个写入器，将数据附加到“*dest”。
-  // "*dest" 必须有初始长度 "dest_length"。
-  // "*dest" 必须在此 Writer 正在使用时保持活动状态。
+  // 创建一个 writer 用于追加数据到 dest 指向的文件.
+  // dest 指向文件初始长度必须为 dest_length; dest 生命期不能短于 writer.
   Writer(WritableFile* dest, uint64_t dest_length);
 
   Writer(const Writer&) = delete;

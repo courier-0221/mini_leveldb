@@ -24,3 +24,29 @@ FIRST，说明是user record的第一条log record
 MIDDLE，说明是user record中间的log record
 LAST，说明是user record最后的一条log record
 ```
+
+# 写 log
+如果用户想把数据写入 log, 则需要将这些数据封装为 Slice, 然后调用 Writer::AddRecord 将其写入 log 文件.
+写入时, 这个 Slice 内容即为 record 的 data 部分, 如果数据量太大导致一个 block(默认 32KB) 装不下, 则这些数据会被分片写入. 也就是说, 这些数据属于一个逻辑 record, 但是因为太大, 被分为若干物理 record 写入到 log 文件.
+什么是逻辑 record ？
+  因为 block 大小限制, 所以 record 可能被分成多个分片(fragment). 
+  我们管 fragment 叫物理 record, 一个或多个物理 record 构成一个逻辑 record. 
+```cpp
+class Writer {
+ public:
+  // 创建一个 writer 用于追加数据到 dest 指向的文件.
+  // dest 指向的文件初始必须为空文件; dest 生命期不能短于 writer.
+  explicit Writer(WritableFile* dest);
+  // 创建一个 writer 用于追加数据到 dest 指向的文件.
+  // dest 指向文件初始长度必须为 dest_length; dest 生命期不能短于 writer.
+  Writer(WritableFile* dest, uint64_t dest_length);
+  // 写入
+  Status AddRecord(const Slice& slice);
+ private:
+  Status EmitPhysicalRecord(RecordType type, const char* ptr, size_t length);
+  WritableFile* dest_; // 顺序写文件
+  int block_offset_;  // Current offset in block
+  // crc的值，预先计算出来，以减少计算开销
+  uint32_t type_crc_[kMaxRecordType + 1];
+};
+```

@@ -50,6 +50,7 @@ bool Reader::SkipToInitialBlock() {
 }
 
 bool Reader::ReadRecord(Slice* record, std::string* scratch) {
+  // 如果条件成立, 表示当前方法是首次被调用，跳到我们要读取的第一个 block 起始位置
   if (last_record_offset_ < initial_offset_) {
     if (!SkipToInitialBlock()) {
       return false;
@@ -58,13 +59,15 @@ bool Reader::ReadRecord(Slice* record, std::string* scratch) {
 
   scratch->clear();
   record->clear();
+  // 指示正在处理的 record 是否被分片了, 
+  // 除非逻辑 record 对应的物理 record 类型是 full, 否则就是被分片了.
   bool in_fragmented_record = false;
-  // Record offset of the logical record that we're reading
-  // 0 is a dummy value to make compilers happy
   uint64_t prospective_record_offset = 0;
 
   Slice fragment;
   while (true) {
+    // 从文件读取一个物理 record 并将其 data 部分保存到 fragment, 
+    // 同时返回该 record 的 type.
     const unsigned int record_type = ReadPhysicalRecord(&fragment);
 
     // ReadPhysicalRecord may have only had an empty trailer remaining in its

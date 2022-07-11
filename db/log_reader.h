@@ -15,27 +15,20 @@ namespace log {
 
 class Reader {
  public:
-  // Interface for reporting errors.
+  // 上报错误接口
   class Reporter {
    public:
     virtual ~Reporter();
 
-    // Some corruption was detected.  "bytes" is the approximate number
-    // of bytes dropped due to the corruption.
+    // 检测到一些损坏。 “bytes”是由于损坏而丢弃的大约字节数。
     virtual void Corruption(size_t bytes, const Status& status) = 0;
   };
 
-  // Create a reader that will return log records from "*file".
-  // "*file" must remain live while this Reader is in use.
-  //
-  // If "reporter" is non-null, it is notified whenever some data is
-  // dropped due to a detected corruption.  "*reporter" must remain
-  // live while this Reader is in use.
-  //
-  // If "checksum" is true, verify checksums if available.
-  //
-  // The Reader will start reading at the first record located at physical
-  // position >= initial_offset within the file.
+  // 创建一个 Reader 来从 file 中读取和解析 records, 
+  // 读取的第一个 record 的起始位置位于文件 initial_offset 或其之后的物理地址. 
+  // 如果 reporter 不为空, 则在检测到数据损坏时汇报要丢弃的数据估计大小. 
+  // 如果 checksum 为 true, 则在可行的条件比对校验和. 
+  // 注意, file 和 reporter 的生命期不能短于 Reader 对象. 
   Reader(SequentialFile* file, Reporter* reporter, bool checksum,
          uint64_t initial_offset);
 
@@ -44,11 +37,9 @@ class Reader {
 
   ~Reader();
 
-  // Read the next record into *record.  Returns true if read
-  // successfully, false if we hit end of the input.  May use
-  // "*scratch" as temporary storage.  The contents filled in *record
-  // will only be valid until the next mutating operation on this
-  // reader or the next mutation to *scratch.
+  // 从文件读取下一个 record 到 *record 中. 如果读取成功, 返回 true; 遇到文件尾返回 false. 
+  // 如果当前读取的 record 没有被分片, 那就用不到 *scratch 参数来为 *record 做底层存储了;
+  // 其它情况需要借助 *scratch 来拼装分片的 record data 部分, 最后封装为一个 Slice 赋值给 *record.
   bool ReadRecord(Slice* record, std::string* scratch);
 
   // Returns the physical offset of the last record returned by ReadRecord.
@@ -88,16 +79,15 @@ class Reader {
   Slice buffer_;    // 读取的内容
   bool eof_;        // 上次Read()返回长度< kBlockSize，暗示到了文件结尾EOF
 
-  // 函数ReadRecord返回的上一个record的偏移
+  // 表示上一次调用 ReadRecord 方法返回的 record 的起始偏移量
   uint64_t last_record_offset_;
   // 当前的读取偏移
   uint64_t end_of_buffer_offset_;
-  // 偏移，从哪里开始读取第一条record
+  // 表示用户创建 Reader 时指定的在文件中寻找第一个 record 的起始地址.
   uint64_t const initial_offset_;
 
-  // True if we are resynchronizing after a seek (initial_offset_ > 0). In
-  // particular, a run of kMiddleType and kLastType records can be silently
-  // skipped in this mode
+  // resyncing_ 用于跳过起始地址不符合 initial_offset_ 的 record,
+  // 如果为 true 表示目前还在定位第一个满足条件的逻辑 record 中.
   bool resyncing_;
 };
 
