@@ -33,6 +33,10 @@ inline uint32_t Unmask(uint32_t masked_crc) {
   return ((rot >> 17) | (rot << 15));
 }
 
+inline uint32_t AcceleratedCRC32C(uint32_t crc, const char* buf, size_t size) {
+  return Extend(crc, buf, size);
+}
+
 }  // namespace crc32c
 }  // namespace leveldb
 

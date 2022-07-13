@@ -42,26 +42,21 @@ class Reader {
   // 其它情况需要借助 *scratch 来拼装分片的 record data 部分, 最后封装为一个 Slice 赋值给 *record.
   bool ReadRecord(Slice* record, std::string* scratch);
 
-  // Returns the physical offset of the last record returned by ReadRecord.
-  //
-  // Undefined before the first call to ReadRecord.
+  // 返回 ReadRecord 返回的最后一条记录的物理偏移量。
   uint64_t LastRecordOffset();
 
  private:
-  // Extend record types with the following special values
   enum {
     kEof = kMaxRecordType + 1,
-    // Returned whenever we find an invalid physical record.
-    // Currently there are three situations in which this happens:
-    // * The record has an invalid CRC (ReadPhysicalRecord reports a drop)
-    // * The record is a 0-length record (No drop is reported)
-    // * The record is below constructor's initial_offset (No drop is reported)
+    // 无效的物理 record 时返回。
+    // 目前出现这种情况的三种情况：
+    // * record 记录的 CRC 无效（ReadPhysicalRecord 报告丢弃）
+    // * record 记录为0长度记录（不报告drop）
+    // * record 记录低于构造函数的initial_offset（不报告drop）
     kBadRecord = kMaxRecordType + 2
   };
 
-  // Skips all blocks that are completely before "initial_offset_".
-  //
-  // Returns true on success. Handles reporting.
+  // 跳过在“initial_offset_”之前的所有块。
   bool SkipToInitialBlock();
 
   // Return type, or one of the preceding special values

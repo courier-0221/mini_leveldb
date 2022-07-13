@@ -4,16 +4,16 @@
 namespace leveldb {
 namespace log {
 
+// Log 文件以块为基本单位，一条记录可能全部写到一个块上，也可能跨几个块。
 enum RecordType {
-  // Zero is reserved for preallocated files
-  kZeroType = 0,
+  kZeroType = 0,    // 为预分配的文件保留。
 
-  kFullType = 1,
+  kFullType = 1,    // 表示一条记录完整地写到了一个块上。
 
   // For fragments
-  kFirstType = 2,
-  kMiddleType = 3,
-  kLastType = 4
+  kFirstType = 2,   // 说明是user record的第一条log record
+  kMiddleType = 3,  // 说明是user record中间的log record
+  kLastType = 4     // 说明是user record最后的一条log record
 };
 static const int kMaxRecordType = kLastType;
 

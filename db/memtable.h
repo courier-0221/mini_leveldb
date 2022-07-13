@@ -5,6 +5,8 @@
 #include "skiplist.h"
 #include "arena.h"
 #include "dbformat.h"
+#include "status.h"
+#include "iterator.h"
 
 namespace leveldb {
 

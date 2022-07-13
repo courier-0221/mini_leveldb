@@ -13,7 +13,7 @@ TEST(Status, MoveConstructor)
         Status ok2 = std::move(ok);
         //std::cout << "Status(Status&& rhs) ok2: " << std::boolalpha << ok2.IsOk() << std::endl;
 
-        ASSERT_TRUE(ok2.IsOk());
+        ASSERT_TRUE(ok2.ok());
     }
 
     {

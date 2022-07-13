@@ -2,7 +2,6 @@
 #include "dbformat.h"
 #include "comparator.h"
 #include "coding.h"
-#include "iterator.h"
 
 namespace leveldb {
 
